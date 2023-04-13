@@ -357,6 +357,12 @@ abstract contract CrossDomainMessenger is
             "CrossDomainMessenger: message has already been relayed"
         );
 
+        // Another message is being relayed, so we just store this for future replay.
+        if(xDomainMsgSender != Constants.DEFAULT_L2_SENDER) {
+            failedMessages[versionedHash] = true;
+            return;
+        }
+
         xDomainMsgSender = _sender;
         bool success = SafeCall.callWithMinGas(_target, _minGasLimit, _value, _message);
         xDomainMsgSender = Constants.DEFAULT_L2_SENDER;
