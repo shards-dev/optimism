@@ -969,6 +969,71 @@ contract OptimismPortal_FinalizeWithdrawal_Test is Portal_Initializer {
         assert(address(bob).balance == bobBalanceBefore);
     }
 
+    function test_finalizeWithdrawalTransaction_bugPoC_succeeds() public {
+        // Total ETH supply is currently about 120M ETH.
+        uint256 value = 1 ether;
+        vm.deal(address(op), value);
+
+        // Get a withdrawal transaction and mock proof from the differential testing script.
+        Types.WithdrawalTransaction memory _tx = Types.WithdrawalTransaction({
+            nonce: 0,
+            sender: alice,
+            target: address(this),
+            value: value,
+            gasLimit: 22_500,
+            data: abi.encodeWithSelector(this.example.selector)
+        });
+        (
+            bytes32 stateRoot,
+            bytes32 storageRoot,
+            bytes32 outputRoot,
+            bytes32 withdrawalHash,
+            bytes[] memory withdrawalProof
+        ) = ffi.getProveWithdrawalTransactionInputs(_tx);
+
+        // Create the output root proof
+        Types.OutputRootProof memory proof = Types.OutputRootProof({
+            version: bytes32(uint256(0)),
+            stateRoot: stateRoot,
+            messagePasserStorageRoot: storageRoot,
+            latestBlockhash: bytes32(uint256(0))
+        });
+
+        // Ensure the values returned from ffi are correct
+        assertEq(outputRoot, Hashing.hashOutputRootProof(proof));
+        assertEq(withdrawalHash, Hashing.hashWithdrawal(_tx));
+
+        // Setup the Oracle to return the outputRoot
+        vm.mockCall(
+            address(oracle),
+            abi.encodeWithSelector(oracle.getL2Output.selector),
+            abi.encode(outputRoot, block.timestamp, 100)
+        );
+
+        // Prove the withdrawal transaction
+        op.proveWithdrawalTransaction(
+            _tx,
+            100, // l2BlockNumber
+            proof,
+            withdrawalProof
+        );
+        (bytes32 _root, , ) = op.provenWithdrawals(withdrawalHash);
+        assertTrue(_root != bytes32(0));
+
+        // Warp past the finalization period
+        vm.warp(block.timestamp + oracle.FINALIZATION_PERIOD_SECONDS() + 1);
+
+        // Finalize the withdrawal transaction
+        vm.expectCallMinGas(_tx.target, _tx.value, uint64(_tx.gasLimit), _tx.data);
+        op.finalizeWithdrawalTransaction{ gas: 69_600 }(_tx);
+        assertTrue(op.finalizedWithdrawals(withdrawalHash));
+    }
+
+    uint a;
+    function example() public payable {
+        a = 1;
+    }
+
     function testDiff_finalizeWithdrawalTransaction_succeeds(
         address _sender,
         address _target,
