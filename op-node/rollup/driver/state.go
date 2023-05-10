@@ -192,9 +192,21 @@ func (s *Driver) eventLoop() {
 	var sequencerCh <-chan time.Time
 	planSequencerAction := func() {
 		delay := s.sequencer.PlanNextSequencerAction()
+		s.log.Warn("Planned next sequencer action", "delay", delay)
+		// When delay is 0, the timer will not immediately fire if this go routine does not yield.
+		if delay == 0 && len(sequencerCh) == 0 {
+			s.log.Warn("forcing next sequencer action")
+			ch := make(chan time.Time, 1)
+			sequencerCh = ch
+			ch <- time.Now()
+			return
+		} else if delay == 0 {
+			s.log.Warn("planned sequencer action already exists")
+			return
+		}
 		sequencerCh = sequencerTimer.C
-		if len(sequencerCh) > 0 { // empty if not already drained before resetting
-			<-sequencerCh
+		if !sequencerTimer.Stop() {
+			<-sequencerTimer.C
 		}
 		sequencerTimer.Reset(delay)
 	}
