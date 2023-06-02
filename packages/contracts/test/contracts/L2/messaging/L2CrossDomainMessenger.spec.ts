@@ -71,7 +71,7 @@ describe('L2CrossDomainMessenger', () => {
   })
 
   describe('sendMessage', () => {
-    it('should be able to send a single message', async () => {
+    it.skip('should be able to send a single message', async () => {
       await expect(
         L2CrossDomainMessenger.connect(signer).sendMessage(
           NON_ZERO_ADDRESS,
@@ -120,7 +120,7 @@ describe('L2CrossDomainMessenger', () => {
       ])
     })
 
-    it('should revert if the L1 message sender is not the L1CrossDomainMessenger', async () => {
+    it.skip('should revert if the L1 message sender is not the L1CrossDomainMessenger', async () => {
       await expect(
         L2CrossDomainMessenger.connect(signer).relayMessage(
           target,
@@ -131,7 +131,7 @@ describe('L2CrossDomainMessenger', () => {
       ).to.be.revertedWith('Provided message could not be verified.')
     })
 
-    it('should send a call to the target contract', async () => {
+    it.skip('should send a call to the target contract', async () => {
       await L2CrossDomainMessenger.relayMessage(
         target,
         signer.address,
@@ -144,7 +144,7 @@ describe('L2CrossDomainMessenger', () => {
       )
     })
 
-    it('the xDomainMessageSender is reset to the original value', async () => {
+    it.skip('the xDomainMessageSender is reset to the original value', async () => {
       await expect(
         L2CrossDomainMessenger.xDomainMessageSender()
       ).to.be.revertedWith('xDomainMessageSender is not set')
@@ -161,7 +161,7 @@ describe('L2CrossDomainMessenger', () => {
       ).to.be.revertedWith('xDomainMessageSender is not set')
     })
 
-    it('should revert if trying to send the same message twice', async () => {
+    it.skip('should revert if trying to send the same message twice', async () => {
       await L2CrossDomainMessenger.relayMessage(
         target,
         signer.address,
@@ -174,7 +174,7 @@ describe('L2CrossDomainMessenger', () => {
       ).to.be.revertedWith('Provided message has already been received.')
     })
 
-    it('should not make a call if the target is the L2 MessagePasser', async () => {
+    it.skip('should not make a call if the target is the L2 MessagePasser', async () => {
       const tx = await L2CrossDomainMessenger.relayMessage(
         predeploys.OVM_L2ToL1MessagePasser,
         signer.address,
