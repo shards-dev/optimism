@@ -17,6 +17,7 @@ import (
 
 type scorer struct {
 	peerStore           Peerstore
+	appScorer           ApplicationScorer
 	metricer            ScoreMetrics
 	log                 log.Logger
 	bandScoreThresholds *BandScoreThresholds
@@ -99,11 +100,14 @@ type Peerstore interface {
 	SetScore(id peer.ID, diff store.ScoreDiff) error
 }
 
+type ApplicationScorer interface {
+	ApplicationScore(id peer.ID) float64
+}
+
 // Scorer is a peer scorer that scores peers based on application-specific metrics.
 type Scorer interface {
-	OnConnect(id peer.ID)
-	OnDisconnect(id peer.ID)
 	SnapshotHook() pubsub.ExtendedPeerScoreInspectFn
+	ApplicationScore(id peer.ID) float64
 }
 
 type ScoreMetrics interface {
@@ -111,13 +115,14 @@ type ScoreMetrics interface {
 }
 
 // NewScorer returns a new peer scorer.
-func NewScorer(cfg *rollup.Config, peerStore Peerstore, metricer ScoreMetrics, bandScoreThresholds *BandScoreThresholds, log log.Logger) Scorer {
+func NewScorer(cfg *rollup.Config, peerStore Peerstore, metricer ScoreMetrics, bandScoreThresholds *BandScoreThresholds, log log.Logger, appScorer ApplicationScorer) Scorer {
 	return &scorer{
 		peerStore:           peerStore,
 		metricer:            metricer,
 		log:                 log,
 		bandScoreThresholds: bandScoreThresholds,
 		cfg:                 cfg,
+		appScorer:           appScorer,
 	}
 }
 
@@ -159,12 +164,6 @@ func (s *scorer) SnapshotHook() pubsub.ExtendedPeerScoreInspectFn {
 	}
 }
 
-// OnConnect is called when a peer connects.
-func (s *scorer) OnConnect(id peer.ID) {
-	// TODO(CLI-4003): apply decay to scores, based on last connection time
-}
-
-// OnDisconnect is called when a peer disconnects.
-func (s *scorer) OnDisconnect(id peer.ID) {
-	// TODO(CLI-4003): persist disconnect-time
+func (s *scorer) ApplicationScore(id peer.ID) float64 {
+	return s.appScorer.ApplicationScore(id)
 }
